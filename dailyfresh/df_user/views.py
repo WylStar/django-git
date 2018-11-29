@@ -4,6 +4,10 @@ from .models import *
 from hashlib import sha1
 # Create your views here.
 
+def index(request):
+    contxt = {'title': '天天生鲜-首页'}
+    return render(request, 'df_user/index.html', contxt)
+
 def register(request):
     contxt = {'title':'天天生鲜-注册'}
     return render(request,'df_user/register.html',contxt)
