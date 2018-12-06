@@ -2,11 +2,9 @@ from django.shortcuts import render,redirect
 from django.http import HttpResponseRedirect
 from .models import *
 from hashlib import sha1
+from . import user_decorator
+from df_goods.models import *
 # Create your views here.
-
-def index(request):
-    contxt = {'title': '天天生鲜-首页'}
-    return render(request, 'df_user/index.html', contxt)
 
 def register(request):
     contxt = {'title':'天天生鲜-注册'}
@@ -68,13 +66,14 @@ def login_handle(request):
         s1 = sha1()
         s1.update(upwd.encode('utf8'))
         if s1.hexdigest() == users[0].upwd:
-            red = HttpResponseRedirect('/user/user_center_info/')
+            url = request.COOKIES.get('url','/')
+            red = HttpResponseRedirect(url)
             if jizhu =='1':
                 red.set_cookie('uname',uname)
             else:
                 red.set_cookie('uname','',max_age=-1)
-            request.session['user.id'] = users[0].id
-            request.session['user.name'] = uname
+            request.session['user_id'] = users[0].id
+            request.session['user_name'] = uname
             return red
         else:
             contxt = {'title': '天天生鲜-登录','error_name':'0',
@@ -85,20 +84,40 @@ def login_handle(request):
                   'error_pwd': '0', 'uname': uname, 'upwd': upwd}
         return render(request,'df_user/login.html/',contxt)
 
+def logout(request):
+    request.session.flush()
+    return redirect('/')
+
+@user_decorator.login
 def user_center_info(request):
-    user_email = UserInfo.objects.get(id=request.session['user.id']).uemail
+    user_email = UserInfo.objects.get(id=request.session['user_id']).uemail
+
+    goods_ids = request.COOKIES.get('goods_ids','')
+    goods_ids1 = goods_ids.split(',')
+
+    goods_list = []
+
+    for goods_id in goods_ids1:
+        if goods_id == '':
+            goods_list = []
+        else:
+            goods_list.append(GoodsInfo.objects.get(id=int(goods_id)))
+
     contxt = {'title': '天天生鲜-用户中心',
               'user_email':user_email,
-              'user_name':request.session['user.name'],
+              'user_name':request.session['user_name'],
+              'page_name':1,'goods_list':goods_list
               }
     return render(request,'df_user/user_center_info.html',contxt)
 
+@user_decorator.login
 def user_center_order(request):
-    contxt = {'title': '天天生鲜-用户中心'}
+    contxt = {'title': '天天生鲜-用户中心','page_name':1}
     return render(request,'df_user/user_center_order.html',contxt)
 
+@user_decorator.login
 def user_center_site(request):
-    user = UserInfo.objects.get(id=request.session['user.id'])
+    user = UserInfo.objects.get(id=request.session['user_id'])
 
     if request.method == 'POST':
         post = request.POST
@@ -108,7 +127,7 @@ def user_center_site(request):
         user.uphone = post.get('uphone')
         user.save()
 
-    contxt = {'title': '天天生鲜-用户中心','user':user}
+    contxt = {'title': '天天生鲜-用户中心','user':user,'page_name':1}
     return render(request,'df_user/user_center_site.html',contxt)
 
 
